@@ -15,10 +15,10 @@ Este documento descreve como configurar um **Raspberry Pi** para realizar conex�
 
 ## 📦 Pré-requisitos
 
-- Raspberry Pi com conexao externa
+- Raspberry Pi com antena Wi-Fi ou cabo de rede funcionando
 - Acesso root ou `sudo` no Raspberry
 - Acesso root ou `sudo` na VPS
-- Chave SSH configurada entre Raspberry → VPS
+- Chave SSH configurada entre Raspberry → VPS (sem senha)
 
 ---
 
@@ -29,3 +29,84 @@ Este documento descreve como configurar um **Raspberry Pi** para realizar conex�
 ```bash
 ssh-keygen -t rsa -b 4096
 ssh-copy-id user@IP_DA_VPS
+```
+
+> **Importante:** o Raspberry deve conseguir conectar sem senha.
+
+---
+
+### 2. Crie o túnel reverso via SSH
+
+Teste manualmente no Raspberry:
+
+```bash
+ssh -N -R 2345:localhost:22 user@IP_DA_VPS
+```
+
+- `-N`: não executa comando remoto
+- `-R 2345:localhost:22`: encaminha a porta 2345 da VPS para a porta 22 do Raspberry
+
+---
+
+### 3. Configure a conexão automática com `autossh`
+
+Instale no Raspberry:
+
+```bash
+sudo apt install autossh
+```
+
+Crie um serviço systemd:
+
+```bash
+sudo nano /etc/systemd/system/reverse-ssh.service
+```
+
+Cole o conteúdo abaixo (ajuste o IP e usuário):
+
+```ini
+[Unit]
+Description=Reverse SSH tunnel via autossh
+After=network.target
+
+[Service]
+User=pi
+Environment="AUTOSSH_GATETIME=0"
+ExecStart=/usr/bin/autossh -N -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -R 2345:localhost:22 user@IP_DA_VPS
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Ative o serviço:
+
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl enable --now reverse-ssh
+```
+
+---
+
+## 🛠️ Acessando o Raspberry a partir da VPS
+
+Na VPS, basta executar:
+
+```bash
+ssh pi@localhost -p <port>
+```
+
+---
+
+## 📌 Observações
+
+- Certifique-se de que a VPS permite o uso de `GatewayPorts` no `/etc/ssh/sshd_config`:
+  ```bash
+  GatewayPorts yes
+  ```
+- Verifique se o túnel está ativo com:
+  ```bash
+  netstat -tunlp | grep 2222
+  ```
+
+---
