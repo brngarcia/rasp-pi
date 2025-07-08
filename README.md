@@ -108,5 +108,12 @@ ssh pi@localhost -p <port>
   ```bash
   netstat -tunlp | grep 2222
   ```
-
+- Verifique se a porta esta em uso:
+  ```bash
+  lsof -i :port
+  ```
+- Matar os processos se precisar:
+  ```bash
+  kill -9 IDPROCESS:
+  ```
 ---
